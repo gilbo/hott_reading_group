@@ -9,7 +9,7 @@
    These definitions will be explained later.  In making
    these changes, I used
    https://mdnahas.github.io/doc/Reading_HoTT_in_Coq.pdf
-   as a guide
+   as a guide, along with the UniMath library
 *)
 
 Definition UU := Type.
@@ -21,7 +21,6 @@ Hint Resolve paths_refl : core .
 Notation "a = b" := (paths a b)
   (at level 70, no associativity) : type_scope.
 Notation idpath := paths_refl.
-
 
 
 
@@ -105,26 +104,67 @@ Notation "10" := (S 9) : nat_scope.
 
 (* 1.2 Function Types *)
 Section Function_Types.
+  (* The use of 'Section' here is important in order
+      to limit the definition scope of these
+      Variables. *)
   Variables A B : UU.
   Variable f : A -> B.
   Variable y : B.
+  (* note how we choose to declare A and B in the
+      'universe' UU.  We could also declare them in the
+      universe type 'Type'.  The exact consequences of
+      the difference are beyond me. *)
 
+  (* notice how we can use Definition (y1) to simply bind
+      a term to a name.  We can also specify a type
+      annotation on the term, (y2) in which case Coq
+      will check that annotation for us.
+      *** TRY: changing the type to something invalid.
+               what does Coq do now? ***
+      We can also define parameters/arguments on the
+      left side of the := definition assignment. (y3)
+      When we do so, those arguments can be typed or
+      untyped.  If we then also provide a type annotation
+      (y4) we can effectively provide a 'return type'
+  *)
   Definition const_y1 := fun x:A => y.
   Definition const_y2 : A -> B := fun x => y.
   Definition const_y3 (x:A) := y.
   Definition const_y4 (x:A) : B := y.
+  (* notice how the Print command will output the
+     definition of the term and its type *)
   Print const_y3.
 
-  (* a more complete file would explore yet more different
-     valid ways of defining functions in Coq syntax here *)
+  (* TODO: Should we include more details on different
+           ways of making definitions in Coq? *)
 End Function_Types.
+
+
+(* Now that we've exited our first Section, which
+   names are still in scope? *)
+Print const_y3.
+(* Notice the parameter list and type for const_y3 now.
+    Some of the variables seem to be explicit arguments.
+    But did all the variables get 'captured' in this way? *)
+
+(*  ** UNCOMMENT THIS COMMAND and TRY IT **
+  Print A.
+*)
+
 
 (* 1.3 Universes and families *)
 Section Universes_and_Families.
   Variables A B : UU.
 
+  (* In the following, note the new command 'Check'
+      This command runs the typechecker on the given term.
+      If a type annotation is provided, the checker attempts
+      to verify that the claimed judgement can be derived.
+      If no annotation is provided, the checker attempts
+      to infer an appropriate type annotation. *)
   Definition const_fam_example : A -> UU := fun(x:A) => B.
   Definition const_fam_ex2 (x:A) := B.
+  Check const_fam_ex2.
   Check const_fam_ex2 : A -> UU.
 End Universes_and_Families.
 
@@ -144,7 +184,11 @@ Section Dependent_Function_Types.
 
   (* these curly braces declare that A B C are implicit
      arguments.  So, Coq will try to infer their values
-     rather than require them to be explicitly provided *)
+     rather than require them to be explicitly provided.
+     Also notice how (and we've snuck this in a bit)
+     we can declare multiple variable names with the same
+     type by just placing spaces between them.
+  *)
   Definition swap {A B C : UU}
   : (A -> B -> C) -> (B -> A -> C)
   := fun g => fun b a => (g a b).
@@ -154,14 +198,31 @@ End Dependent_Function_Types.
 Section Product_Types.
   Variables A B : UU.
 
-  (* built in product type *)
+  (* Function and Dependent Function types are core parts
+     of Coq, unlike pairs/products, sums, and the other
+     stuff we'll be looking at.  These are all (to Coq)
+     just different 'Inductive' datatypes.
+     Unfortunately, the default such types in Coq conflict
+     with our UU strategy and modifications for doing HoTT.
+     So, to keep things consistent, and break everything
+     down as much as possible, we'll be redefining as
+     many of these basic constructs as possible.
+  *)
   Inductive prod (A B : UU) : UU :=
     | pair : A -> B -> prod A B .
   Implicit Arguments pair [A B].
   Notation "X * Y" := (prod X Y) : type_scope.
   Notation "( x , y , .. , z )" :=
     (pair .. (pair x y) .. z) : core_scope.
+  (* Mostly, we can ignore this all as required magic for
+     now.  The 'Implicit Arguments' command is a different
+     way of achieving the same goal as {A:UU} style
+     implicit arguments.  The 'Notation' command allows
+     us to do operator overloading by redefining the
+     behavior of the Coq parser. *)
 
+  (* Now let's check out what this name is bound to,
+     and how we might form product types and pairs *)
   Print prod.
   Check prod A B.
 
@@ -170,42 +231,132 @@ Section Product_Types.
   Check (a,b).
   Check (a,b) : A*B.
 
+  (* If we look back at the preceding, we can see the
+      (i) formation rule: prod A B, or equivalently A * B
+      (ii) introduction rule: pair a b, or (a,b)
+     So we can see any inductive datatype will have
+     these two features at least *)
 
+  (* For instance, the unit type is very very boring *)
   Inductive unit  : UU :=
           | tt    : unit.
   Print unit.
   Check tt : unit.
 
-  (* projection functions... *)
+  (* projections for pairs are
+      (iii) eliminators: ways to deconstruct a term
+     Notice that we can use this special pattern matching
+     construct to pull apart a term inside an inductive
+     datatype.  In Coq, this pattern matching is actually
+     more primitive than the induction principles (coming
+     up). *)
+  Definition fst {A B : UU} (p:A*B) :=
+    match p with (a,b) => a end.
+  Definition snd {A B : UU} (p:A*B) :=
+    match p with (a,b) => b end.
   Print fst.
   Print snd.
   Check fst (a,b) : A.
   Check snd (a,b) : B.
+  (* Here is a new command: 'Compute' which can be used
+     to ask Coq's term reduction engine to process a
+     term.  Because of the way we defined fst/snd,
+     Compute will nicely reduce explicit pairs.  This
+     kind of interaction is called a
+      (iv) computation rule: which shows how to reduce
+              eliminator( introduction( . ) )
+     Because this computation rule is provided
+     *definitionally*, it will be processed automatically
+     by the computation engine.  However, this may not be
+     true in general... *)
   Compute fst (a,b).
   Compute snd (a,b).
 
+  (* Now let's do a 'proof' using the tactics subsystem.
+     Rather than say 'Definition' we write the command
+     'Lemma' which is just a different way of defining
+     a term.  Note how everything looks like a definition,
+     except we just put a period after the type without
+     any := assignment.
+     Then, we delimit the proof with the commands
+      'Proof' and 'Qed'.  In between are a sequence of
+     'tactics' that are applied to successively break
+     down the goal.  While this is hardly a full Coq
+     tutorial, I'll try to explain.
+
+     Hopefully you're in an IDE or tool that shows you
+     the intermediate proof state as you go.
+     The first tactic pulls apart the quantifier and
+     names the argument x.  Then, this x term, which is
+     in the product type is 'destructed', which means
+     consider all the cases of what x could be, and then
+     simpl is applied, invoking the computation engine
+     to reduce terms.  Finally, invoking reflexivity
+     resolves a trivial equality.
+  *)
+  Lemma uniq_prod_try_1 {X Y} : forall (x : X*Y),
+    (fst x, snd x) = x.
+  Proof. intro x. destruct x. simpl. reflexivity. Qed.
+  (* But what happens when we print this term we just
+     defined?  Voila!  It's a term.  As we go, this will
+     become more obvious--how each part of this term
+     corresponds to / was constructed by one of these
+     tactics we invoked. *)
+  Print uniq_prod_try_1.
+  Compute uniq_prod_try_1 (a,b).
+  (* Hmm, this computation didn't appear to resolve
+     the pattern match like the projection computations
+     did.  What's wrong?  Let's try repeating the whole
+     proof, but closing with 'Defined' instead of 'Qed' *)
   Lemma uniq_prod {X Y} : forall (x : X*Y),
     (fst x, snd x) = x.
-  Proof. destruct x. reflexivity. Defined.
+  Proof. intro x. destruct x. simpl. reflexivity. Defined.
   Print uniq_prod.
   Compute uniq_prod (a,b).
+  (* Now, the term is actually reduced down further.
+     In Coq, when you write Qed this tells the Coq engine
+     that you want to treat the proof (i.e. term) of the
+     proposition (i.e. type) that you just proved as a
+     black-box.  Usually this is the right thing to do,
+     but it prevents exploiting any definitional equalities
+     that have been created.
+    Finally, note that this is a
+      (v) uniqueness principle: specifying the behavior of
+            introduction( elimination( . ) )
+          which is kind of like the dual of a computation
+          rule.
+     Unlike the computation rules for 'prod A B', the
+      uniqueness principle is given as a 'propositional
+      equality' rather than a definitional one.  This means
+      we'll have to invoke it explicitly rather than count
+      on the computation engine to automatically resolve it.
+  *)
 
-  Definition prod_recurse : forall (C : Type),
+  (* Note the following possible definitions.
+      In Coq, we can build everything out of pattern
+      matching. *)
+  Definition prod_recurse : forall (C : UU),
     (A -> B -> C) -> A*B -> C
   := fun C g p => match p with | (a,b) => g a b end.
 
-  Definition unit_recurse : forall (C : Type),
+  Definition unit_recurse : forall (C : UU),
     C -> unit -> C := fun C c t => c.
 
-  Definition prod_induction : forall (C : A*B -> Type),
+  Definition prod_induction : forall (C : A*B -> UU),
     (forall (x:A) (y:B), C (x,y) ) ->
       forall (x:A*B), C(x)
   := fun C g x => match x with | (a,b) => g a b end.
   Print prod_rect.
 
-  Definition unit_induction : forall (C : unit->Type),
+  Definition unit_induction : forall (C : unit->UU),
     C tt -> forall (x:unit), C x
   := fun C c x => match x with tt => c end.
+
+  (* But also, Coq gave us built-in versions of these
+     induction schemes when we defined the Inductive
+     Datatypes. *)
+  Print prod_rect.
+  Print unit_rect.
 
   Lemma uniq_unit : forall (x:unit), x = tt.
   Proof. destruct x. reflexivity. Defined.
