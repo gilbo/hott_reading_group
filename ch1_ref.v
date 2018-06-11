@@ -295,10 +295,10 @@ End Product_Types.
    they will not be available in the subsequent
    Sections *)
 
+Arguments pair [A B].
 Notation "X * Y" := (prod X Y) : type_scope.
 Notation "( x , y , .. , z )" :=
   (pair .. (pair x y) .. z) : core_scope.
-Arguments pair [A B].
 
 (* 1.6 Dependent Pair Types *)
 Section Dependent_Pair_Types.
@@ -316,7 +316,7 @@ Section Dependent_Pair_Types.
     (at level 200, x binder, y binder, right associativity)
   : type_scope.
   Check spair.
-  Notation "( x , .. , y ; z )"
+  Notation "{ x ; .. ; y ; z }"
     := (spair _ x .. (spair _ y z) ..) : fibration_scope.
   Open Scope fibration_scope.
   Delimit Scope fibration_scope with fiber.
@@ -334,17 +334,17 @@ Section Dependent_Pair_Types.
   Variables (a:A) (b : B a).
   Print spair.
   Check spair _ a b : exists x:A, B x.
-  Check (a ; b).
+  Check {a ; b}.
 
   (* Let's first look at projection functions *)
   Definition proj1 {A : UU} {B : A -> UU}
     (p : exists (x:A), B x) : A
-  := match p with (a;b) => a end.
-  Compute proj1 (a ; b).
+  := match p with {a;b} => a end.
+  Compute proj1 {a ; b}.
   Definition proj2 {A : UU} {B : A -> UU}
     (p : exists (x:A), B x) : B (proj1 p)
-  := match p with (a;b) => b end.
-  Compute proj2 (a ; b).
+  := match p with {a;b} => b end.
+  Compute proj2 {a ; b}.
 
   (* Now, here's the simple recursion principle, but
       also the automatically defined induction principle *)
@@ -352,7 +352,7 @@ Section Dependent_Pair_Types.
     (g : forall x, B x -> C)
   : (exists x, B x) -> C
   := fun p => match p with
-      | (a;b) => g a b
+      | {a;b} => g a b
      end.
   Print sigUU_rect.
 
@@ -362,10 +362,10 @@ Section Dependent_Pair_Types.
     (at level 3) : fibration_scope.
   Notation "x .2" := (proj2 x)
     (at level 3) : fibration_scope.
-  Check (a;b).1 : A.
-  Check (a;b).2 : B a.
-  Compute (a;b).1.
-  Compute (a;b).2.
+  Check {a;b}.1 : A.
+  Check {a;b}.2 : B a.
+  Compute {a;b}.1.
+  Compute {a;b}.2.
 
   (* type theoretic axiom of choice *)
   Definition ac {X Y : UU} {R : X -> Y -> UU}
@@ -393,7 +393,7 @@ Notation "'exists' x .. y , p" :=
   (sigUU (fun x => .. (sigUU (fun y => p)) ..))
   (at level 200, x binder, y binder, right associativity)
   : type_scope.
-Notation "( x , .. , y ; z )"
+Notation "{ x ; .. ; y ; z }"
   := (spair _ x .. (spair _ y z) ..) : fibration_scope.
 Open Scope fibration_scope.
 Delimit Scope fibration_scope with fiber.
@@ -945,9 +945,6 @@ Section Identity_Types.
 
   (* Now finally we can come back to our strange overloading
      of the equality operator that we began this file with *)
-  Notation "x = y :> A" := (@paths A x y) : type_scope.
-  Notation "a = b" := (a = b :> _)
-    (at level 70, no associativity) : type_scope.
   Print paths.
   Check paths a b.
   Check @paths A a b.
@@ -1013,303 +1010,5 @@ Section Identity_Types.
 
 End Identity_Types.
 
-Notation "x = y :> A" := (@paths A x y) : type_scope.
-Notation "a = b" := (a = b :> _)
 Notation "a <> b" := (not (a = b)) : type_scope.
-
-(* Chapter 1 Exercises *)
-Section Chapter_1_Exercises.
-  (* 1.1. Define Function Composition
-          and show associativity *)
-  Definition fc {A B C} (g : B -> C) (f : A -> B)
-                : A -> C
-                := fun a => g (f a).
-  Lemma fc_assoc {A B C D : Type}
-                 {f : A -> B}
-                 {g : B -> C}
-                 {h : C -> D}
-        : fc h (fc g f) = fc (fc h g) f.
-  Proof. trivial. Qed.
-
-
-  (* 1.2 Derive pair_recursion from fst/snd projections
-         and    sigma_recursion from projT1/projT2 *)
-  Definition pair_recursion {A B}
-    (C : Type)
-    (g : A -> B -> C)
-    (p : prod A B)
-  : C
-  := g (fst p) (snd p).
-  Definition sigma_recursion {A B}
-    (C : Type)
-    (g : forall x : A, B x -> C)
-    (p : { x : A & B x })
-  : C
-  := g (projT1 p) (projT2 p).
-
-
-  (* 1.3 Derive pair_induction from fst/snd projedtions
-         and    sigma_induction from projT1/projT2 *)
-  Lemma uniq_pair {A B}
-    (x : prod A B)
-  : pair (fst x) (snd x) = x.
-  Proof. destruct x. trivial. Qed.
-  Definition pair_induction {A B}
-    (C : (prod A B) -> Type)
-    (g : forall (x:A) (y:B), (C (pair x y)))
-    (x : prod A B)
-  : C x
-  := indiscernability_of_identiticals
-      (prod A B) C
-      _ _
-      (uniq_pair x)
-      (g (fst x) (snd x)).
-  Lemma uniq_sigma {A B}
-    (x : {a:A & B a})
-  : existT B (projT1 x) (projT2 x) = x.
-  Proof. destruct x. trivial. Qed.
-  Definition sigma_induction {A B}
-    (C : {x : A & B x} -> Type)
-    (g : forall (a : A) (b : B a), C (existT B a b))
-    (p : { x : A & B x })
-  : C p
-  := indiscernability_of_identiticals
-      {a:A & B a} C
-      _ _
-      (uniq_sigma p)
-      (g (projT1 p) (projT2 p)).
-
-
-  (* 1.4 Derive nat recursion from iteration *)
-  Fixpoint iter (C:Type) (c0:C) (cs:C->C) (n:nat) : C
-    := match n with
-        | O   => c0
-        | S n => cs (iter C c0 cs n)
-        end.
-  Definition nat_recursion (C:Type) :
-    C -> (nat -> C -> C) -> nat -> C
-  := fun c0 cs n =>
-      snd (iter (nat*C)%type
-                (0,c0)
-                (fun p => (S (fst p), cs (fst p) (snd p)))
-                n).
-  Lemma Def_Eq_nat_recursion {C:Type} {c0 cs} (n:nat)
-        : nat_recursion C c0 cs O = c0 /\
-          nat_recursion C c0 cs (S n) =
-                          cs n (nat_recursion C c0 cs n).
-  Proof. 
-    pose (unwrap_rec :=
-                 iter (nat * C) (0, c0)
-                      (fun p : nat * C =>
-                          (S (fst p),
-                           cs (fst p) (snd p)))).
-    assert (forall m:nat, fst (unwrap_rec m) = m) as Count.
-        induction m; trivial;
-        unfold unwrap_rec; simpl; fold unwrap_rec;
-        rewrite IHm; trivial.
-    split; trivial;
-    unfold nat_recursion; simpl; fold unwrap_rec;
-    rewrite Count.
-    trivial.
-  Qed. Print Def_Eq_nat_recursion.
-
-  (* 1.5 Bool Sum *)
-  Definition BSum (A B : Type) :=
-    { x:bool & bool_rect (fun x : bool => Type) A B x }.
-  Definition Binl {A B} (a:A) : BSum A B :=
-    existT _ true a.
-  Definition Binr {A B} (b:B) : BSum A B :=
-    existT _ false b.
-  Definition BSum_induction {A B}
-    (C : BSum A B -> Type)
-    (f : forall a:A, C (Binl a))
-    (g : forall b:B, C (Binr b))
-    (x : BSum A B)
-  : C x
-  := sigT_rect C
-        (fun tag => match tag with
-          | true => f
-          | false => g end) x.
-  Lemma DefEq_BSum_induction {A B} {C f g} :
-    (forall a:A, BSum_induction C f g (Binl a) = f a) /\
-    (forall b:B, BSum_induction C f g (Binr b) = g b).
-  Proof. split; trivial. Qed.
-
-  (* 1.6 Bool Prod *)
-  Definition BProd (A B : Type) :=
-    forall x:bool, bool_rect (fun x:bool => Type) A B x.
-  Definition Bpair {A B} (a : A) (b : B) : BProd A B :=
-    fun x:bool => match x with
-      | true  => a
-      | false => b
-    end.
-  Axiom funext :
-    forall (A : Type) (B : A -> Type)
-           (f g : forall x:A, B x),
-    (forall x : A, (f x) = (g x)) -> f = g.
-  Definition Bfst {A B} (x : BProd A B) : A :=
-    x true.
-  Definition Bsnd {A B} (x : BProd A B) : B :=
-    x false.
-  Definition uniq_BProd {A B} {x : BProd A B}
-  : Bpair (Bfst x) (Bsnd x) = x
-  := funext _ _
-            (Bpair (Bfst x) (Bsnd x))
-            x
-            (fun tag : bool => match tag with
-               | true   => eq_refl (x true)
-               | false  => eq_refl (x false) end).
-  Definition BProd_induction {A B}
-    (C : BProd A B -> Type)
-    (f : forall (a:A) (b:B), C (Bpair a b))
-    (x : BProd A B)
-  : C x
-  := indiscernability_of_identiticals _
-            C _ _ uniq_BProd
-            (f (Bfst x) (Bsnd x)).
-  (*Lemma DefEq_BProd_induction {A B} {C g} :
-    forall (a:A) (b:B),
-      BProd_induction C g (Bpair a b) = g a b.*)
-
-  (* 1.7 Alternative Path Induction *)
-    (* skipping *)
-
-  (* 1.8 Multiplication and Exponentiation of nat;
-         (nat, +, 0, *, 1) is a semi-ring *)
-    (* define using nat_recursion *)
-  Definition plus  (x y : nat) : nat :=
-    nat_rect (fun _ => nat)
-             x
-             (fun _ => S)
-             y.
-  Definition times (x y : nat) : nat :=
-    nat_rect (fun _ => nat)
-             0
-             (fun _ => plus x)
-             y.
-  Definition exp   (x y : nat) : nat :=
-    nat_rect (fun _ => nat)
-             1
-             (fun _ => times x)
-             y.
-  Definition is_a_semiring
-    (A : Type)
-    (plus     : A -> A -> A)
-    (zero     : A)
-    (times    : A -> A -> A)
-    (one      : A)
-  :=
-    (forall a b c : A,
-        plus (plus a b) c = plus a (plus b c))
-  /\(forall a : A, plus zero a = a /\
-                   plus a zero = a)
-  /\(forall a b : A, plus a b = plus b a)
-    (* (A, times, one) is a monoid *)
-  /\(forall a b c : A,
-        times (times a b) c = times a (times b c))
-  /\(forall a : A, times one a = a /\
-                   times a one = a)
-    (* plus/times distribute *)
-  /\(forall a b c : A,
-        times a (plus b c) = plus (times a b) (times a c))
-  /\(forall a b c : A,
-        times (plus b c) a = plus (times b a) (times c a))
-    (* zero times annihilation *)
-  /\(forall a : A, times zero a = zero /\
-                   times a zero = zero)
-    .
-  Theorem nat_is_a_semiring :
-    is_a_semiring nat plus 0 times 1.
-  Proof. unfold is_a_semiring.
-    assert (forall a b c : nat,
-        plus (plus a b) c = plus a (plus b c)) as PlusAssoc.
-      induction c; simpl; trivial;
-                   rewrite IHc; trivial.
-    assert (forall a, plus 0 a = a) as ZeroPlus.
-      induction a; simpl; trivial; rewrite IHa; trivial.
-    assert (forall a b : nat,
-        plus a b = plus b a) as PlusSymm.
-      intros;
-      induction a; simpl; trivial;
-                          rewrite <- IHa; clear IHa;
-      induction b; simpl; trivial; rewrite IHb; trivial.
-    assert (forall a b c : nat,
-                times a (plus b c) =
-                plus (times a b) (times a c)) as LeftDist.
-      induction c; simpl; trivial; rewrite IHc; clear IHc;
-      rewrite <- PlusAssoc; rewrite <- PlusAssoc;
-      rewrite (PlusSymm a); trivial.
-    repeat split; intros.
-    (*1*) trivial.
-    (*2*) trivial.
-    (*3*) trivial.
-    (*4*)
-      induction c; simpl; trivial;
-                   rewrite IHc; trivial;
-      rewrite LeftDist; trivial.
-    (*5*)
-      induction a; simpl; trivial;
-                   rewrite IHa; clear IHa;
-                   induction a; simpl; trivial;
-                   rewrite IHa; trivial.
-    (*6*) trivial.
-    (*7*)
-      induction a; simpl; trivial; rewrite IHa; simpl;
-      repeat (rewrite <- PlusAssoc);
-      repeat (rewrite (PlusAssoc b));
-      rewrite (PlusSymm c); trivial.
-    (*8*)
-      induction a; simpl; trivial;
-                   rewrite IHa; trivial.
-  Qed.
-
-  (* 1.9 Define the type family Fin *)
-    (* unsure how to do this *)
-
-
-
-
-
-  (* 1.11 Triple not is constructively just not *)
-  Definition intro_double_not {A:Prop} : A -> ~~A :=
-    fun a na => na a.
-  Definition triple_not {A:Prop} : ~~~A -> ~A :=
-    fun nnna a => nnna (intro_double_not a).
-
-  (* 1.12 More Simple Logic Problems as Types *)
-  Definition if_a_then_if_b_then_a {A B}
-    : A -> (B -> A)
-    := fun a => fun b => a.
-  Definition if_not_a_or_not_b_then_not_a_and_b {A B}
-    : (~A \/ ~B) -> ~(A /\ B)
-    := fun or_nanb and_ab =>
-          or_ind (fun na => na (proj1 and_ab))
-                 (fun nb => nb (proj2 and_ab))
-                 or_nanb.
-
-  (* 1.13 Not Not Excluded Middle *)
-  Definition not_not_excluded_middle {P} :
-      ~~(P \/ ~P)
-  := fun n_OR => (fun np => n_OR (or_intror np))
-                 (fun p  => n_OR (or_introl p)).
-
-  (* 1.14 *)
-    (* skipping for now; no formal work? *)
-
-  (* 1.15 indiscernability from path induction *)
-    (* see inline earlier *)
-
-  (* 1.16 commutativity of addition of natural numbers *)
-  Lemma nat_commutativity :
-    forall i j : nat, i+j = j+i.
-  Proof.
-    induction i; induction j; simpl; trivial;
-      try (rewrite <- IHj); trivial;
-      rewrite IHi; simpl; trivial;
-      rewrite <- IHi; trivial.
-  Qed.
-
-
-End Chapter_1_Exercises.
-
 
