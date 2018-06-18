@@ -12,19 +12,23 @@
    as a guide, along with the UniMath library
 *)
 
+Require Export Coq.Init.Notations.
+
 Definition UU := Type.
 Identity Coercion fromUUtoType : UU >-> Sortclass.
 
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+
+
+
 (* Equality, or path types *)
-Inductive paths {A:UU} (a:A) : (A->UU) :=
+Inductive paths {A:UU} (a:A) : A -> UU :=
   paths_refl : paths a a.
 Arguments paths_refl {A a}, [A] a.
 Arguments paths_rect [A].
 Hint Resolve paths_refl : core .
-Notation "a = b" := (paths a b)
-  (at level 70, no associativity) : type_scope.
+Notation "a = b" := (paths a b) : type_scope.
 Notation idpath := paths_refl.
-Notation "a <> b" := (not (a = b)) : type_scope.
 
 (* Product/pair types *)
 Inductive prod (A B : UU) : UU :=
@@ -176,6 +180,7 @@ Ltac natred := simpl;
 Definition not (A:UU) : UU := A -> empty.
 Notation "~ A" := (not A) : type_scope.
 Arguments not _%type.
+Notation "a <> b" := (not (a = b)) : type_scope.
 
 (* less than or equal for natural numbers *)
 Definition LEq n m := exists k:nat, n+k = m.
@@ -219,4 +224,6 @@ Definition based_path_induction {A:UU}
   := fun x p => match p with
                 | idpath _ => c
                 end.
+
+Check nat = nat.
 

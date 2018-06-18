@@ -12,8 +12,12 @@
    as a guide, along with the UniMath library
 *)
 
+Require Export Coq.Init.Notations.
+
 Definition UU := Type.
 Identity Coercion fromUUtoType : UU >-> Sortclass.
+
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
 
 Inductive paths {A:UU} (a:A) : (A->UU) :=
   paths_refl : paths a a.
@@ -591,7 +595,10 @@ Section the_Natural_Numbers.
 
 End the_Natural_Numbers.
 
+Delimit Scope nat_scope with nat.
+Bind Scope nat_scope with nat.
 Arguments S _%nat.
+Open Scope nat_scope.
 
 Notation  "0" := (O) : nat_scope.
 Notation  "1" := (S 0) : nat_scope.
@@ -620,7 +627,9 @@ Section Pattern_Matching_and_Recursion.
      find all the Lemmas, theorems, etc. involving that object as
      it can.  So, here we'll search the *old* natural number type
      that we shadowed when we defined our own 'nat'. *)
-  Search Datatypes.nat.
+  (* Search Datatypes.nat. *)
+  (* The above command won't work once we turn on the command line
+     argument that prevents the loading of the standard libraries *)
   (* It wouldn't hurt to try to prove some of these results anew *)
   (*
     plus_n_O  : forall n : nat, n = n + 0

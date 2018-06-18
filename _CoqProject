@@ -1,0 +1,7 @@
+-R . HoTT_Reading
+-arg -noinit
+-arg -indices-matter
+-arg -type-in-type
+-arg -w 
+-arg +uniform-inheritance
+
