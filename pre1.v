@@ -5,6 +5,10 @@
 (* This file is meant to capture anything we want to refer back to
    from chapter 1, while ditching the extraneous stuff *)
 
+Require Export Coq.Init.Logic.
+
+Require Export Coq.Init.Notations.
+
 (*
    The odd use of UU and redefinition of basic stuff is taken
    from a mixture of using
@@ -27,6 +31,7 @@ Inductive paths {A:UU} (a:A) : A -> UU :=
 Arguments paths_refl {A a}, [A] a.
 Arguments paths_rect [A].
 Hint Resolve paths_refl : core .
+Notation "a = b :> A" := (@paths A a b) : type_scope.
 Notation "a = b" := (paths a b) : type_scope.
 Notation idpath := paths_refl.
 
@@ -52,33 +57,47 @@ Lemma prod_uniq {X Y} : forall (x : X*Y),
 Proof. intro x. destruct x. simpl. reflexivity. Defined.
 
 (* dependent pair type / sigma types *)
-Inductive sigUU { T: UU } ( P: T -> UU ) :=
-| spair : forall x:T, P x -> sigUU P.
+Set Primitive Projections.
+Set Nonrecursive Elimination Schemes.
+
+Record sig { T: UU } ( P: T -> UU ) := spair { proj1 : T; proj2 : P proj1 }.
+
+Arguments spair {_} _ _ _.
+Arguments proj1 {_ _} _.
+Arguments proj2 {_ _} _.
+
+(*
+Inductive sig { T: UU } ( P: T -> UU ) :=
+| spair : forall x:T, P x -> sig P.
+*)
 Notation "'sigma' x .. y , p" :=
-  (sigUU (fun x => .. (sigUU (fun y => p)) ..))
+  (sig (fun x => .. (sig (fun y => p)) ..))
     (at level 200, x binder, y binder, right associativity)
   : type_scope.
 Notation "'exists' x .. y , p" :=
-  (sigUU (fun x => .. (sigUU (fun y => p)) ..))
+  (sig (fun x => .. (sig (fun y => p)) ..))
     (at level 200, x binder, y binder, right associativity)
   : type_scope.
 Notation "{ x ; .. ; y ; z }"
-  := (spair _ x .. (spair _ y z) ..) : fibration_scope.
+  := (spair _ x .. (spair _ y z) ..).
+(*
 Open Scope fibration_scope.
 Delimit Scope fibration_scope with fiber.
-(* the odd semicolon at the end notation is unfortunately required *)
+*)
 
 (* projection for dependent pairs *)
+(*
 Definition proj1 {A : UU} {B : A -> UU}
            (p : exists (x:A), B x) : A
   := match p with {a;b} => a end.
 Definition proj2 {A : UU} {B : A -> UU}
            (p : exists (x:A), B x) : B (proj1 p)
   := match p with {a;b} => b end.
+*)
 Notation "x .1" := (proj1 x)
-                     (at level 3) : fibration_scope.
+                     (at level 3, format "'[   ' x '.1' ']'").
 Notation "x .2" := (proj2 x)
-                     (at level 3) : fibration_scope.
+                     (at level 3, format "'[   ' x '.2' ']'").
 
 (* type theoretic axiom of choice *)
 Definition ac {X Y : UU} {R : X -> Y -> UU}
@@ -224,6 +243,4 @@ Definition based_path_induction {A:UU}
   := fun x p => match p with
                 | idpath _ => c
                 end.
-
-Check nat = nat.
 

@@ -309,14 +309,14 @@ Section Dependent_Pair_Types.
 
   (* We start with some more magic definitions and
      notations to create sigma types as desired *)
-  Inductive sigUU { T: UU } ( P: T -> UU ) :=
-    spair : forall x:T, P x -> sigUU P.
+  Inductive sig { T: UU } ( P: T -> UU ) :=
+    spair : forall x:T, P x -> sig P.
   Notation "'sigma' x .. y , p" :=
-    (sigUU (fun x => .. (sigUU (fun y => p)) ..))
+    (sig (fun x => .. (sig (fun y => p)) ..))
     (at level 200, x binder, y binder, right associativity)
   : type_scope.
   Notation "'exists' x .. y , p" :=
-    (sigUU (fun x => .. (sigUU (fun y => p)) ..))
+    (sig (fun x => .. (sig (fun y => p)) ..))
     (at level 200, x binder, y binder, right associativity)
   : type_scope.
   Check spair.
@@ -328,9 +328,9 @@ Section Dependent_Pair_Types.
   (* Here are different ways to write the type *)
   Variable A : Type.
   Variable B : A -> Type.
-  Print sigUU.
-  Check @sigUU A B.
-  Check sigUU B.
+  Print sig.
+  Check @sig A B.
+  Check sig B.
   Check exists x, B x.
   Check sigma x, B x.
 
@@ -358,7 +358,7 @@ Section Dependent_Pair_Types.
   := fun p => match p with
       | {a;b} => g a b
      end.
-  Print sigUU_rect.
+  Print sig_rect.
 
   (* intro a custom notation for deconstructing
      dependent pairs *)
@@ -390,11 +390,11 @@ Section Dependent_Pair_Types.
 End Dependent_Pair_Types.
 
 Notation "'sigma' x .. y , p" :=
-  (sigUU (fun x => .. (sigUU (fun y => p)) ..))
+  (sig (fun x => .. (sig (fun y => p)) ..))
   (at level 200, x binder, y binder, right associativity)
   : type_scope.
 Notation "'exists' x .. y , p" :=
-  (sigUU (fun x => .. (sigUU (fun y => p)) ..))
+  (sig (fun x => .. (sig (fun y => p)) ..))
   (at level 200, x binder, y binder, right associativity)
   : type_scope.
 Notation "{ x ; .. ; y ; z }"

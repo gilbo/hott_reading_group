@@ -116,11 +116,11 @@ Section Chapter_1_Exercises.
              (g : forall b:B, C (Binr b))
              (x : BSum A B)
     : C x
-    := (* fill in here... *) (* use sigUU_rect *)
-      sigUU_rect _ _ C
-                 (fun tag => match tag with
-                             | false => f
-                             | true => g end) x.
+    := (* fill in here... *) (* use sig_rect *)
+      sig_rect _ _ C
+               (fun tag => match tag with
+                           | false => f
+                           | true => g end) x.
   Lemma DefEq_BSum_induction {A B} {C f g} :
     (forall a:A, BSum_induction C f g (Binl a) = f a) *
     (forall b:B, BSum_induction C f g (Binr b) = g b).
