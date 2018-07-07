@@ -396,17 +396,17 @@ Section Type_Families_are_Fibrations.
   Proof. induction p; reflexivity. Defined.
 
   Lemma lem_2_3_9 {A : UU} {P : A -> UU} {x y z : A}
-        {p : x=y} {q : y=z} {u : P x}
+        (p : x=y) (q : y=z) (u : P x)
     :  q#(p#u) = (p ∙ q)#u.
   Proof. induction p; reflexivity. Defined.    
   Lemma lem_2_3_10 {A B : UU} {P : B -> UU} {x y : A}
-        {f : A -> B}
-        {p : x=y} {u : P (f x)}
+        (f : A -> B)
+        (p : x=y) (u : P (f x))
     : transport (P ∘ f) p u = transport P (ap f p) u.
   Proof. induction p; reflexivity. Defined.
   Lemma lem_2_3_11 {A : UU} {P Q : A -> UU} {x y : A}
-        {f : section (P -> Q)%fiber }
-        {p : x=y} {u : P x}
+        (f : section (P -> Q)%fiber )
+        (p : x=y) (u : P x)
     : transport Q p (f x u) = f y (transport P p u).
   Proof. induction p; reflexivity. Defined.
 End Type_Families_are_Fibrations.
@@ -424,6 +424,23 @@ Section Homotopies_and_Equivalences.
              (f g : section P)
     := forall x:A, f x = g x.
   Notation "f ~ g" := (homotopy f g) (at level 70, no associativity).
+
+  (* Uncomment this section if you want to try out the homotopy proofs
+     for yourself.  They are very slightly non-trivial. *)
+  (*
+  Lemma homotopy_refl {A : UU} {P : A -> UU} {f : section P}
+    : f ~ f.
+  Proof.
+  Defined.
+  Lemma homotopy_symm {A : UU} {P : A -> UU} {f g : section P}
+    : f ~ g -> g ~ f.
+  Proof.
+  Defined.
+  Lemma homotopy_trans {A : UU} {P : A -> UU} {f g h : section P}
+    : f ~ g -> g ~ h -> f ~ h.
+  Proof.
+  Defined.
+   *)
 
   Lemma homotopy_refl {A : UU} {P : A -> UU} {f : section P}
     : f ~ f.
@@ -575,7 +592,8 @@ Section Homotopies_and_Equivalences.
     pose (β' x := (γ ∘ f) x ∙ β x);
     exact { g ; (α, β') }.
   Defined.
-  (* the following property is true, but proof is postponed *)
+  (* the following property is true, but proof is postponed
+     to a later chapter *)
   (*
   Lemma equiv_property_3 (A B : UU) (f : A -> B)
     : forall e1 e2 : isequiv f, e1 = e2.
@@ -591,7 +609,11 @@ Section Homotopies_and_Equivalences.
       (at level 80, no associativity) : type_scope.
   (* input: \~- or \simeq *)
 
-
+  (* This is an important lemma, that I've added
+     compared to the book development.
+     While it is obviously true on reflection from any number
+     of angles having it explicitly as an object can be helpful.
+   *)
   Remark transport_isequiv {X : UU} (P : X -> UU) {x y : X} (p : x=y)
     : isequiv (transport P p).
   Proof. apply equiv_from_qinv; apply example_2_4_9. Defined.
@@ -723,14 +745,16 @@ Section Cartesian_Product_Types.
   Definition thm_2_6_4 {Z} {A B} {z w} {p} {x}
     := @transport_prod Z A B z w p x.
 
+
   Theorem ap_paireq {A B A' B' : UU} {x y : A×B}
           {p : fst x = fst y} {q : snd x = snd y}
           {g : A -> A'} {h : B -> B'}
-    : let f x := (g (fst x), h (snd x)) in
-      let FG x := idpath : fst (f x) = g (fst x) in
-      ap f (paireq(p,q)) = paireq( (FG x)∙(ap g p)∙(inv (FG y)), ap h q ).
-  Proof. intros f FG; destruct x,y; simpl in p,q;
-           destruct p,q; reflexivity. Qed.
+    : ap  (λ x, (g (fst x), h (snd x)))  (paireq(p,q))
+      = paireq( (idpath (fst (g (fst x), h (snd x))))
+                  ∙ (ap g p)
+                  ∙ (idpath (fst (g (fst y), h (snd y)))),
+                (ap h q) ).
+  Proof. destruct x,y; simpl in p,q; destruct p,q; reflexivity. Defined.
   Definition thm_2_6_5 {A B A' B'} {x y} {p} {q} {g} {h}
     := @ap_paireq A B A' B' x y p q g h.
 End Cartesian_Product_Types.
@@ -743,7 +767,7 @@ Section Σ_Types.
   Definition proj2eq {A : UU} {P : A -> UU} {w w' : total P}
              (p : w = w')
     : transport P (proj1eq p) w.2 = w'.2
-    := (inv lem_2_3_10) ∙ @apd _ (P∘proj1) _ _ (@proj2 _ P) p.
+    := (inv (lem_2_3_10 _ _ _)) ∙ @apd _ (P∘proj1) _ _ (@proj2 _ P) p.
   Definition projeq {A : UU} {P : A -> UU} {w w' : total P}
              (p : w = w')
     : Σ(p : w.1 = w'.1), p # w.2 = w'.2
@@ -765,8 +789,27 @@ Section Σ_Types.
         simpl in r; destruct r as (r1,r2); destruct r1;
           simpl in r2; destruct r2; reflexivity.
     - destruct p; destruct w as (w1,w2); reflexivity.
-  Qed.
+  Defined.
   Definition thm_2_7_2 {A} {P} {w w'} := @sigeq_distribute A P w w'.
+
+  Definition sigeq_compute {A : UU} {P : A -> UU} {w w' : Σ x:A, P x}
+             (pq : Σ (p : w.1 = w'.1), p # w.2 = w'.2)
+    : projeq (spaireq pq) = pq
+    := (fst sigeq_distribute.2).2 pq.
+  Definition sigeq_compute1 {A : UU} {P : A -> UU} {w w' : Σ x:A, P x}
+             (pq : Σ (p : w.1 = w'.1), p # w.2 = w'.2)
+    : proj1eq (spaireq pq) = pq.1
+    := proj1eq (sigeq_compute pq).
+  Definition sigeq_compute2 {A : UU} {P : A -> UU} {w w' : Σ x:A, P x}
+             (pq : Σ (p : w.1 = w'.1), p # w.2 = w'.2)
+    : transport (λ p : w.1 = w'.1, transport P p w.2 = w'.2)
+                (sigeq_compute1 pq) (projeq (spaireq pq)).2
+      = pq.2
+    := proj2eq (sigeq_compute pq).
+  Definition sigeq_uniq {A : UU} {P : A -> UU} {w w' : Σ x:A, P x}
+             (p : w=w')
+    : spaireq (projeq p) = p
+    := (snd sigeq_distribute.2).2 p.
 
   Corollary sig_uniq {A : UU} {P : A -> UU} {z : Σ x:A, P x}
     : z = { z.1 ; z.2 }.
@@ -782,10 +825,10 @@ Section Σ_Types.
     : fibration X := λ x, Σ (u : P x), Q{x;u}.
 
   Theorem transport_sig {A : UU} (P : A -> UU) (Q : (total P) -> UU)
-          {x y : A} (p : x=y) (u : P x) (z : Q {x;u})
-    : transport (sig_fiber P Q) p {u;z}
+          {x y : A} (p : x=y) (uz : sig_fiber P Q x)
+    : transport (sig_fiber P Q) p uz
       = 
-      { transport P p u ; transport Q (lift u p) z }.
+      { transport P p uz.1 ; transport Q (lift uz.1 p) uz.2 }.
   Proof. induction p; reflexivity. Defined.
 
   (* a functorality theorem for Σ-types, and interaction with the
@@ -805,6 +848,9 @@ Section The_Unit_Type.
     - reflexivity.
     - destruct x; reflexivity.
   Qed.
+
+  (* Consider stating and proving the other things
+     described briefly in this chapter at the end. *)
 End The_Unit_Type.
 
 Section Pi_Types_and_the_Function_Extensionality_Axiom.
@@ -1101,7 +1147,7 @@ Section Identity_Type.
   Lemma transport_eq_l {A : UU} {a x1 x2 : A} (p : x1=x2) (q : x1 = a)
     : transport (λ x, x = a) p q = (inv p) ∙ q.
   Proof. destruct p; autorewrite with PathGroupoid; reflexivity. Defined.
-  Lemma transport_eq_both {A : UU} {a x1 x2 : A} (p : x1=x2) (q : x1 = x1)
+  Lemma transport_eq_both {A : UU} {x1 x2 : A} (p : x1=x2) (q : x1 = x1)
     : transport (λ x, x = x) p q = (inv p) ∙ q ∙ p.
   Proof. destruct p; autorewrite with PathGroupoid; reflexivity. Defined.
 
@@ -1161,7 +1207,7 @@ Section Coproducts.
     : encode_coprod_l a0 x (decode_coprod_l a0 x c) = c.
   Proof. destruct x; try contradiction; simpl in c; simpl;
            unfold encode_coprod_l;
-           rewrite <- lem_2_3_10; unfold funcomp; simpl;
+           rewrite <- (lem_2_3_10 inl); unfold funcomp; simpl;
              rewrite transport_eq_r; reflexivity. Defined.
 
   Lemma deencode_coprod_r {A B : UU} (b0 : B) (x : A + B) (p : inr b0 = x)
@@ -1172,7 +1218,7 @@ Section Coproducts.
     : encode_coprod_r b0 x (decode_coprod_r b0 x c) = c.
   Proof. destruct x; try contradiction; simpl in c; simpl;
            unfold encode_coprod_r;
-           rewrite <- lem_2_3_10; unfold funcomp; simpl;
+           rewrite <- (lem_2_3_10 inr); unfold funcomp; simpl;
              rewrite transport_eq_r; reflexivity. Defined.
 
   Theorem coprod_l_eqvcoding {A B : UU} (a0 : A) (x : A + B)
@@ -1246,7 +1292,8 @@ Section Natural_Numbers.
            generalize n as n'; clear n; induction m;
              intro n; induction n; intro c; simpl;
                try (destruct c; trivial; try contradiction).
-         unfold encode_nat; rewrite <- lem_2_3_10; unfold funcomp; simpl.
+         unfold encode_nat; rewrite <- (lem_2_3_10 S);
+           unfold funcomp; simpl.
          fold (encode_nat m n (decode_nat m n c)).
          apply IHm.
   Defined.
@@ -1293,7 +1340,7 @@ Section Example_Equality_Of_Structures.
         (m : Binop A) (a : Assoc m)
     : (transport SemigroupStr p { m ; a }).1 = induced_mult p m.
   Proof.
-    apply (proj1eq (transport_sig Binop (λ Xm, Assoc Xm.2) p m a) ).
+    apply (proj1eq (transport_sig Binop (λ Xm, Assoc Xm.2) p {m;a}) ).
   Defined.
   Lemma induced_assoc_from_equiv {A B : UU} (p : A=B)
         (m : Binop A) (a : Assoc m)
@@ -1301,7 +1348,7 @@ Section Example_Equality_Of_Structures.
                 (transport SemigroupStr p { m ; a }).2
       = induced_assoc p m a.
   Proof.
-    apply (proj2eq (transport_sig Binop (λ Xm, Assoc Xm.2) p m a) ).
+    apply (proj2eq (transport_sig Binop (λ Xm, Assoc Xm.2) p {m;a}) ).
   Defined.
 
   Lemma explicit_induced_mult {A B : UU} (e : A≃B) (m : A->A->A)
@@ -1340,17 +1387,18 @@ Section Universal_Properties.
   Definition sndd {X : UU} {A B : X -> UU} (f : ∏ x:X, (A x) × (B x))
     : ∏ x:X, B x := λ x, snd (f x).
 
-  (* this should be LEFT TO THE READER *)
+  (* The following theorem is left to the reader, but is proved
+     below so that the file may be used as is. *)
+  (*
   Theorem univ_prod {X : UU} {A B : X -> UU}
     : (∏ x:X, (A x) × (B x)) ≃ (∏ x:X, A x) × (∏ x:X, B x).
-  Proof. exists (λ f, (fstd f, sndd f)).
-         apply equiv_from_qinv.
-         exists (λ gh x,  ((fst gh) x, (snd gh) x)).
-         split; intro; unfold fstd, sndd, funcomp; simpl.
-         - eta_reduce; rewrite prod_uniq; trivial.
-         - apply funext; intro; rewrite prod_uniq; trivial.
+  Proof.
+    (* Left to the reader *)
   Defined.
+   *)
 
+  (* the previous axiom of choice result shown is non-dependent,
+     and *)
   Theorem univ_sig {X : UU} {A : X -> UU} {P : ∏ x:X, A x -> UU}
     : (∏ x:X, Σ a : A x, P x a) ≃
       (Σ (g : ∏ x:X, A x), ∏ x:X, P x (g x)).
@@ -1368,27 +1416,72 @@ Section Universal_Properties.
     - eta_reduce; rewrite <- sig_uniq; trivial.
     - apply funext; intro; rewrite <- sig_uniq; trivial.
   Defined.
-End Universal_Properties.
+
+  (* The following is left to the reader, but is proved below so
+     that the file may be used as is *)
+  (*
+  Theorem univ_prod_rect {A B : UU} {C : A×B -> UU}
+    : (∏ w:A×B, C w) ≃ (∏ x:A, ∏ y:B, C(x,y) ).
+  Proof. (* fill in here... *)
+  Defined.
+  Theorem univ_sig_rect {A : UU} {B : A -> UU} {C : (Σ x:A, B x) -> UU}
+    : (∏ w:(Σ x:A, B x), C w) ≃ (∏ x:A, ∏ y:B x, C{x;y} ).
+  Proof. (* fill in here... *)
+  Defined.
+  Theorem univ_paths_rect {A : UU} {a : A} (B : ∏ x:A, a=x -> UU)
+    : (∏ (x:A) (p:a=x), B x p) ≃ B a (idpath a).
+  Proof. (* fill in here... *)
+  Defined.
+   *)
 
 
 
-Section Chapter_2_Exercises.
   
-  (* TODO *)
+  (* non-reader derived proofs *)
 
-  (* one random worked example sitting around from earlier *)
-  Example example_2_4_8_a {A : UU} {x y z : A} (p : x=y)
-    : let p_lcomp : (y=z -> x=z) := λ q, p ∙ q in
-      qinv p_lcomp.
+  Theorem univ_prod {X : UU} {A B : X -> UU}
+    : (∏ x:X, (A x) × (B x)) ≃ (∏ x:X, A x) × (∏ x:X, B x).
   Proof.
-    intro;
-    pose (p_inv := λ q:x=z, (inv p) ∙ q);
-    exists p_inv.
-    unfold funcomp, p_lcomp, p_inv;
-    split; intro; autorewrite with PathGroupoid; reflexivity.
-  Qed.
+    exists (λ f, (fstd f, sndd f)).
+    apply equiv_from_qinv.
+    exists (λ gh x,  ((fst gh) x, (snd gh) x)).
+    split; intro; unfold fstd, sndd, funcomp; simpl.
+    - eta_reduce; rewrite prod_uniq; trivial.
+    - apply funext; intro; rewrite prod_uniq; trivial.
+  Defined.
 
-End Chapter_2_Exercises.
+  Theorem univ_prod_rect {A B : UU} {C : A×B -> UU}
+    : (∏ w:A×B, C w) ≃ (∏ x:A, ∏ y:B, C(x,y) ).
+  Proof.
+    pose (eval (f: ∏ w:A×B, C w) (x:A) (y:B) := f (x,y)).
+    exists eval.
+    apply equiv_from_qinv.
+    exists (@prod_rect A B C).
+    unfold funcomp, eval, prod_rect; split; intro f; simpl; trivial.
+    apply funext; intros (x,y); trivial.
+  Defined.
+  Theorem univ_sig_rect {A : UU} {B : A -> UU} {C : (Σ x:A, B x) -> UU}
+    : (∏ w:(Σ x:A, B x), C w) ≃ (∏ x:A, ∏ y:B x, C{x;y} ).
+  Proof.
+    pose (eval (f: ∏ w:(Σ x:A, B x), C w) (x:A) (y:B x) := f {x;y}).
+    exists eval.
+    apply equiv_from_qinv.
+    exists (@sig_rect A B C).
+    split; intro f; trivial.
+  Defined.
+  Theorem univ_paths_rect {A : UU} {a : A} (B : ∏ x:A, a=x -> UU)
+    : (∏ (x:A) (p:a=x), B x p) ≃ B a (idpath a).
+  Proof.
+    pose (eval (f : ∏ (x:A) (p:a=x), B x p) := f a (idpath a) ).
+    exists eval.
+    apply equiv_from_qinv.
+    exists (@paths_rect A a B).
+    unfold funcomp, eval; split;
+      [ intro
+      | intro f; apply funext; intro x;
+        apply funext; intro p; destruct p
+      ]; trivial.
+  Defined.
 
-
+End Universal_Properties.
 
