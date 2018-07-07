@@ -221,7 +221,7 @@ Proof.
 Qed.
 
 (* some results about paths that we may wish to discard? *)
-Lemma indiscernability_of_identiticals {A : UU} :
+Lemma indiscernability_of_identicals {A : UU} :
   forall (C:A->UU),
   forall (x y : A) (p : x = y), (C x) -> (C y).
 Proof.

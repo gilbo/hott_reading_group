@@ -964,7 +964,7 @@ Section Identity_Types.
 
   (* The indiscernability of identicals is a key principle
      by which equalities may be used to rewrite an expression *)
-  Lemma indiscernability_of_identiticals :
+  Lemma indiscernability_of_identicals :
     forall (C:A->UU),
     forall (x y : A) (p : x = y), (C x) -> (C y).
   Proof.

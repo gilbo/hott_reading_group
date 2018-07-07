@@ -41,7 +41,7 @@ Section Chapter_1_Exercises.
              (x : prod A B)
     : C x
     := (* fill in here... *)
-      indiscernability_of_identiticals
+      indiscernability_of_identicals
       (prod A B) C
       _ _
       (uniq_prod x)
@@ -58,7 +58,7 @@ Section Chapter_1_Exercises.
              (p : sigma x : A, B x )
     : C p
     := (* fill in here... *)
-      indiscernability_of_identiticals
+      indiscernability_of_identicals
         (sigma a:A, B a) C
         _ _
         (uniq_sigma p)
@@ -156,7 +156,7 @@ Section Chapter_1_Exercises.
              (x : BProd A B)
     : C x
     := (* fill in here... *)
-      indiscernability_of_identiticals _
+      indiscernability_of_identicals _
             C _ _ uniq_BProd
             (f (Bfst x) (Bsnd x)).
   (* I skipped over this one *)

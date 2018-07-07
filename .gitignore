@@ -6,3 +6,6 @@ CoqMakefile.conf
 *.aux
 *.glob
 *.vo
+
+notes.txt
+
