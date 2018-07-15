@@ -41,9 +41,9 @@ Section Chapter_2_Exercises.
   (* Exercise 2.3 *)
   Lemma pc4 {A : UU} {x y z : A} (p : x=y) (q : y=z) : x=z.
   Proof. (* fill in here... *)
-    apply path_inverse.
-    apply path_inverse in p.
-    apply path_inverse in q.
+    apply inv.
+    apply inv in p.
+    apply inv in q.
     apply (pc1 q p).
   Defined.
   Lemma pc4_is_1 {A : UU} {x y z : A} (p : x=y) (q : y=z)
@@ -157,7 +157,6 @@ Section Chapter_2_Exercises.
 
 
   (* Exercise 2.7 *)
-  Print thm_2_6_5.
   Print ap_paireq.
   (* generalize the theorem just printed to Σ-types *)
   (* hint: try drawing topological pictures to get an intuition
@@ -174,8 +173,8 @@ Section Chapter_2_Exercises.
                  (spair (λ gp, transport B' gp (h x.1 x.2)
                                = h y.1 y.2)
                         (ap g p)
-                        ((inv (lem_2_3_10 g p _))
-                           ∙ (lem_2_3_11 h p x.2)
+                        ((inv (transport_apeq g p _))
+                           ∙ (transport_comm_f h p x.2)
                            ∙ (ap (h y.1) q))).
   Proof. destruct x,y; simpl in p,q; destruct p,q; reflexivity. Defined.
 
@@ -353,11 +352,9 @@ Section Chapter_2_Exercises.
       trivial.
   Defined.
 
-  Lemma uniteq : ∏ (u v : 𝟙), u = v.
-  Proof. intros u v; destruct u, v; reflexivity. Defined.
   Lemma unit_is_set : ∏ (u v : 𝟙) (p q : u=v), p = q.
   Proof. intros u v p q.
-         pose (ueqv := @thm_2_8_1 u v p).
+         pose (ueqv := @uniteq_is_unit u v p).
          apply ( inv ((snd ueqv.2).2 p)
                      ∙ ap _ (uniteq _ _)
                      ∙ (snd ueqv.2).2 q ).

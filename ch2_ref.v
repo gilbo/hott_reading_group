@@ -82,6 +82,25 @@ Notation "g ∘ f" := (funcomp f g)
 (* sometimes a useful tactic when dealing heavily with functions *)
 Ltac eta_reduce := repeat change (λ x, ?h x) with h.
 
+(* the chapter covers some of the deeper equivalences implied
+   by curry-ing functions, but programmers may already be
+   familiar with the idea *)
+Definition curry {X Y : UU} {Z : X -> Y -> UU}
+           (f : ∏ (xy : X×Y), Z (fst xy) (snd xy)) : ∏ (x:X) (y:Y), Z x y
+  := λ (x:X) (y:Y), f(x,y).
+Definition uncurry {X Y : UU} {Z : X -> Y -> UU}
+           (f : ∏ (x:X) (y:Y), Z x y) : ∏ (xy : X×Y), Z (fst xy) (snd xy)
+  := λ (xy : X×Y), f (fst xy) (snd xy).
+
+Definition sigcurry {X : UU} {Y : X -> UU} {Z : ∏ x:X, Y x -> UU}
+           (f : ∏ (xy : Σ x:X, Y x), Z xy.1 xy.2)
+  : ∏ (x : X) (y : Y x), Z x y
+  := λ (x : X) (y : Y x), f {x;y}.
+Definition siguncurry {X : UU} {Y : X -> UU} {Z : ∏ x:X, Y x -> UU}
+           (f : ∏ (x : X) (y : Y x), Z x y)
+  : ∏ (xy : Σ x:X, Y x), Z xy.1 xy.2
+  := λ (xy : Σ x:X, Y x), f xy.1 xy.2 .
+
 
 
 (* One of the non-obvious themes of this chapter, that I'll try
@@ -129,28 +148,20 @@ Section Types_are_Higher_Groupoids.
   : b = a
     := paths_rect a (λ x _, x = a)
                   (idpath a) b p.
-  Definition path_inverse {A : UU} {a b : A}
+  (* lem_2_1_1 *)
+  Definition inv {A : UU} {a b : A}
              (p : a = b)
     : b = a.
   Proof.
     induction p. reflexivity.
   Defined.
-  Print path_inverse.
+  Print inv.
   (* note that we can approach either definition, but that we should
      use 'Defined' instead of 'Qed' if we want to take advantage of
      the definitional equality *)
-  Compute path_inverse (idpath 0).
-
-  (* a convenience name for path inversion... *)
-  Definition inv {A : UU} {a b : A} (p : a=b) := @path_inverse A a b p.
   Compute inv (idpath 0).
-  Check inv (idpath 0).
 
-  (* we also want to number the lemmas for reference, so... *)
-  Definition lem_2_1_1 {A} {a b} := @path_inverse A a b.
-  Print lem_2_1_1.
-
-
+  (* lem_2_1_2 *)
   (* ok, we can be a bit more brief now.  Let's do transitivity *)
   Definition path_compose_try_1 {A : UU} {a b c : A}
              (p : a = b) (q : b = c)
@@ -198,8 +209,6 @@ Section Types_are_Higher_Groupoids.
 
   Check ( λ p:1+1=2, (idpath (1+1)) ∙ p ).
 
-  Definition lem_2_1_2 {A} {a b c} := @path_compose A a b c.
-
 
   (* rather than bundling Lemma 2.1.4, we break it down into
      individual results that can be used more easily *)
@@ -229,6 +238,53 @@ Section Types_are_Higher_Groupoids.
     : p ∙ (q ∙ r) = (p ∙ q) ∙ r.
   Proof. induction p; induction q; induction r; reflexivity. Defined.
 
+
+  (* Sometimes we want to write proofs that chain a sequence of
+     equalities together.  Using a basic "foil" scheme from
+     grade-school algebra as an example, these are commonly written
+     on paper as such.
+
+        (a+b)*(c+d) = a*(c+d) + b*(c+d)         by right-distributivity
+                    = a*c + a*d + b*(c+d)       by left-distributivity
+                    = a*c + a*d + b*c + b*d     by left-distributivity
+
+     It's not obvious how you would encode this style of proof in
+     Ltac.  In order to make these sorts of proofs easier to translate,
+     I've written the following higher-order tactic, or "tactical."
+     I'll show a 4-element associativity result using it right now.
+   *)
+
+  Tactic Notation "chain" constr(Ex) :=
+    match goal with
+    | |- ?Ey = _ => refine (path_compose (_ : Ey = Ex) _)
+    end.
+  
+  Tactic Notation "chain" constr(Ex) "by" tactic(T) :=
+    match goal with
+    | |- ?Ey = _ => refine (path_compose (_ : Ey = Ex) _);
+                    [ solve[T] | ]
+    end.
+  
+  Remark assoc_5paths {A : UU} {a b c d e f : A}
+         (p : a = b) (q : b = c) (r : c = d) (s : d = e) (t : e = f)
+    : p ∙ (q ∙ (r ∙ (s ∙ t))) = (((p ∙ q) ∙ r) ∙ s) ∙ t.
+  Proof.
+    (* executing this tactic breaks the proof of equality into
+       two halves by interposing the provided term *)
+    chain ((p ∙ q) ∙ (r ∙ (s ∙ t))).
+    (* proof of the left-hand *)
+    apply path_compose_assoc. (* this exactly discharges the goal *)
+    (* for the next rewrite, we use the 'by' clause to immediately
+       discharge the left-hand sub-goal. *)
+    chain (((p ∙ q) ∙ r) ∙ (s ∙ t)) by apply path_compose_assoc.
+    (* now we're almost done, so we'll just solve the final goal
+       directly *)
+    apply path_compose_assoc.
+  Defined.
+  Print assoc_5paths.
+  (* note that the proof is a composition of paths too! *)
+
+  
   (* notated Ω(A) in the HoTT book *)
   Definition loops (A : UU) (a : A) := (a = a).
   (* notated Ω²(A) in the HoTT book *)
@@ -242,7 +298,7 @@ Section Types_are_Higher_Groupoids.
              (α : p = q) (r : b = c)
     : p ∙ r = q ∙ r.
   Proof. induction r;
-           pose (ru := @path_compose_rid A a b);
+           set (ru := @path_compose_rid A a b);
            apply (inv (ru _) ∙ α ∙ (ru _)).
   Defined.
   Definition whisker_l {A : UU} {a b c : A}
@@ -250,10 +306,28 @@ Section Types_are_Higher_Groupoids.
              (p : a = b) (β : r = s)
     : p ∙ r = p ∙ s.
   Proof. induction p;
-           pose (lu := @path_compose_lid A a c);
+           set (lu := @path_compose_lid A a c);
            apply (inv (lu _) ∙ β ∙ (lu _)).
   Defined.
 
+  (* especially when we're working backwards from a goal
+     and want to add whiskers, we need this reverse
+     direction form of the above *)
+  Definition cancel_whisker_r {A : UU} {a b c : A}
+             {p q : a = b}
+             (r : b = c) (α : p ∙ r = q ∙ r)
+    : p = q.
+  Proof. induction r;
+           set (ru := @path_compose_rid A a b);
+           apply ((ru _) ∙ α ∙ inv (ru _)). Defined.
+  Definition cancel_whisker_l {A : UU} {a b c : A}
+             {r s : b = c}
+             (p : a = b) (β : p ∙ r = p ∙ s)
+    : r = s.
+  Proof. induction p;
+           set (lu := @path_compose_lid A a c);
+           apply ((lu _) ∙ β ∙ inv (lu _)). Defined.
+  
   Definition horizontal_1 {A : UU} {a b c : A}
              {p q : a = b} {r s : b = c}
              (α : p = q) (β : r = s)
@@ -274,20 +348,21 @@ Section Types_are_Higher_Groupoids.
     : α ∙ β = β ∙ α.
   Proof.
     (* Main Proof of Eckmann Hilton *)
-    unfold loops2 in α,β; unfold loops in α,β.
-    assert (α ∙ β = horizontal_1 α β) as EQ1.
+    (* we can use our new chaining form here.
+       see the end of the proof in the book for the chaining pattern *)
+    unfold loops2 in α,β.
+    chain (horizontal_1 α β).
     { (* this is a sub-goal mechanism for organizing proofs... *)
-        unfold horizontal_1; simpl;
-          unfold path_compose_lid; repeat rewrite <- path_compose_rid;
-            trivial.
+      unfold horizontal_1; simpl;
+        unfold path_compose_lid; repeat rewrite <- path_compose_rid;
+          trivial.
     }
-    assert (horizontal_2 α β = β ∙ α) as EQ2.
+    chain (horizontal_2 α β) by exact (EQ_horizontal α β).
     {
       unfold horizontal_2; simpl;
         unfold path_compose_lid; repeat rewrite <- path_compose_rid;
           trivial.
     }
-    exact (EQ1 ∙ (EQ_horizontal α β) ∙ EQ2).
   Qed.
 
   (* One less obvious point that was made in chapter 1 and applies
@@ -314,20 +389,30 @@ Section Types_are_Higher_Groupoids.
        end.
 End Types_are_Higher_Groupoids.
 
-Notation "p ∙ q" :=
+Notation "p '∙' q" :=
   (path_compose p q)
     (at level 60, left associativity) : type_scope.
 
+Tactic Notation "chain" constr(Ex) :=
+  match goal with
+  | |- ?Ey = _ => refine (path_compose (_ : Ey = Ex) _)
+  end.
+
+Tactic Notation "chain" constr(Ex) "by" tactic(T) :=
+  match goal with
+  | |- ?Ey = _ => refine (path_compose (_ : Ey = Ex) _);
+                  [ solve[T] | ]
+  end.
+
 
 Section Functions_are_Functors.
+  (* lem_2_2_1 *)
   Lemma ap {A B : UU} {x y : A} (f : A -> B)
   : (x = y) -> (f x) = (f y).
   Proof.
     intro p; induction p; reflexivity.
   Defined.
   Compute ap S (idpath 0).
-
-  Definition lem_2_2_1 {A B} {a b} := @ap A B a b.
 
   Lemma ap_path_compose {A B : UU} {x y z : A}
         {p : x = y} {q : y = z}
@@ -363,48 +448,56 @@ Section Type_Families_are_Fibrations.
   Definition total   {X:UU} (P : fibration X) := Σ x:X, P x.
   Definition section {X:UU} (P : fibration X) := ∏ x:X, P x.
   
-
+  (* lem_2_3_1 *)
   Lemma transport {A : UU} (P : A -> UU) {x y : A} (p : x=y)
     : P x -> P y.
   Proof. induction p; exact idfun. Defined.
-  Definition lem_2_3_1 {A} (P:A->UU) {x y} := @transport A P x y.
 
   Notation "p # x" :=
     (transport _ p x)
       (right associativity, at level 65, only parsing).
 
+  (* In the pre2.v file, special notation is introduced for
+     _reverse_ transport, as well as many more transport lemmas.
+     These are omitted here to prevent readers' brains from melting
+     quite so much more than they already are. *)
+
   (* we will later define lift in a way that more explicitly
      reflects the Σ structure of the equality it poses *)
+  (* lem_2_3_2 *)
   Lemma lift_direct {A : UU} (P : A -> UU) {x y : A} (u : P x) (p : x=y)
     : { x ; u } = { y ; p#u }.
   Proof. induction p; reflexivity. Defined.
-  Definition lem_2_3_2 {A} (P:A->UU) {x y} := @lift_direct A P x y.
 
+  (* lem_2_3_4 *)
   Lemma apd {A : UU} {P : A -> UU} {x y : A}
         (f : ∏ x:A, P x)
     : ∏ p:x=y, p#(f x) = (f y) :> (P y).
   Proof. induction p; reflexivity. Defined.
-  Definition lem_2_3_4 {A} {P} {x y} := @apd A P x y.
 
+  (* lem_2_3_5 *)
   Lemma transport_const {A : UU} (B : UU) {x y : A} (p : x=y) (b : B)
     : transport (λ _, B) p b = b.
   Proof. induction p; reflexivity. Defined.
-  Definition lem_2_3_5 {A} (B:UU) {x y : A} := @transport_const A B x y.
 
-  Lemma lem_2_3_8 {A B : UU} {x y : A} {f : A->B} {p : x=y}
+  (* lem_2_3_8 *)
+  Lemma apd_factor {A B : UU} {x y : A} {f : A->B} {p : x=y}
     : apd f p = (transport_const B p (f x)) ∙ ap f p.
   Proof. induction p; reflexivity. Defined.
 
-  Lemma lem_2_3_9 {A : UU} {P : A -> UU} {x y z : A}
+  (* lem_2_3_9 *)
+  Lemma transport_twice {A : UU} {P : A -> UU} {x y z : A}
         (p : x=y) (q : y=z) (u : P x)
     :  q#(p#u) = (p ∙ q)#u.
-  Proof. induction p; reflexivity. Defined.    
-  Lemma lem_2_3_10 {A B : UU} {P : B -> UU} {x y : A}
+  Proof. induction p; reflexivity. Defined.
+  (* lem_2_3_10 *)
+  Lemma transport_apeq {A B : UU} {P : B -> UU} {x y : A}
         (f : A -> B)
         (p : x=y) (u : P (f x))
     : transport (P ∘ f) p u = transport P (ap f p) u.
   Proof. induction p; reflexivity. Defined.
-  Lemma lem_2_3_11 {A : UU} {P Q : A -> UU} {x y : A}
+  (* lem_2_3_11 *)
+  Lemma transport_comm_f {A : UU} {P Q : A -> UU} {x y : A}
         (f : section (P -> Q)%fiber )
         (p : x=y) (u : P x)
     : transport Q p (f x u) = f y (transport P p u).
@@ -695,24 +788,27 @@ Section Homotopies_and_Equivalences.
       qinv p_lcomp.
    *)
 
-  Example example_2_4_9 {A : UU} {P : A -> UU} {x y : A} (p : x = y)
+  (* ex_2_4_9 *)
+  Example transport_is_qinv {A : UU} {P : A -> UU} {x y : A} (p : x = y)
     : qinv (transport P p : P x -> P y).
   Proof.
     exists (transport P (inv p)).
-    unfold funcomp; split; intro; rewrite lem_2_3_9;
+    unfold funcomp; split; intro; rewrite transport_twice;
       autorewrite with PathGroupoid; reflexivity.
   Defined.
 
   Definition isequiv {A B : UU} (f : A -> B)
     := (Σ g:B->A, f ∘ g ~ (@idfun B)) × (Σ h:B->A, h ∘ f ~ (@idfun A)).
 
-  Lemma equiv_property_1 (A B : UU) (f : A -> B)
+  (* here are the first two of three properties that
+     are required for a type to be an equivalence *)
+  Lemma equiv_from_qinv {A B : UU} {f : A -> B}
     : qinv f -> isequiv f.
   Proof.
     intro qf; destruct qf as [g (α , β)];
       split; exists g; assumption.
   Defined.
-  Lemma equiv_property_2 (A B : UU) (f : A -> B)
+  Lemma qinv_from_equiv {A B : UU} {f : A -> B}
     : isequiv f -> qinv f.
   Proof.
     intro ef; destruct ef as [ (g , α) (h , β) ];
@@ -726,10 +822,6 @@ Section Homotopies_and_Equivalences.
   Lemma equiv_property_3 (A B : UU) (f : A -> B)
     : forall e1 e2 : isequiv f, e1 = e2.
    *)
-  Definition equiv_from_qinv {A B : UU} {f : A -> B}
-    := equiv_property_1 A B f.
-  Definition qinv_from_equiv {A B : UU} {f : A -> B}
-    := equiv_property_2 A B f.
 
   Definition equiv (A B : UU) := (Σ f:A->B, isequiv f).
   Notation "A ≃ B" :=
@@ -744,7 +836,7 @@ Section Homotopies_and_Equivalences.
    *)
   Remark transport_isequiv {X : UU} (P : X -> UU) {x y : X} (p : x=y)
     : isequiv (transport P p).
-  Proof. apply equiv_from_qinv; apply example_2_4_9. Defined.
+  Proof. apply equiv_from_qinv; apply transport_is_qinv. Defined.
 
 
   Lemma equiv_refl {A : UU} : A ≃ A.
@@ -799,6 +891,15 @@ Section The_Higher_Groupoid_Structure_of_Type_Formers.
 End The_Higher_Groupoid_Structure_of_Type_Formers.
 
 
+(* Note that in the pre2.v file the following sections on
+   non-dependent and dependent pairs have been significantly
+   reworked.  However, I am leaving the other form of them
+   here as is.  For whatever reason, I've been very unsatisfied
+   with these sections.  Reading through the Foundations library
+   inside of UniMath revealed a certain amount of discontent
+   also on display there ab out how to provide a more canonical
+   presentation of this basic machinery *)
+
 Section Cartesian_Product_Types.
   (* rather than jump into the theorem, we'll build some machinery *)
   Definition fsteq {A B : UU} {x y : A×B} (p : x=y) := ap fst p.
@@ -810,6 +911,7 @@ Section Cartesian_Product_Types.
            destruct x as (a,b); destruct y as (a',b');
              simpl in p,q; destruct p; destruct q; reflexivity.
   Defined.
+  (* thm_2_6_2 *)
   Theorem prodeq_distribute {A B : UU} {x y : A×B}
     : (x = y) ≃ ( (fst x = fst y) × (snd x = snd y) ).
   Proof.
@@ -822,8 +924,6 @@ Section Cartesian_Product_Types.
           reflexivity.
     - induction r; destruct x; reflexivity.
   Defined.
-
-  Definition thm_2_6_2 {A B} {x y} := @prodeq_distribute A B x y.
 
   Example prod_uniq_as_cor {A B : UU} {z : A×B} : z = (fst z, snd z).
   Proof. apply paireq; split; reflexivity. Qed.
@@ -865,15 +965,15 @@ Section Cartesian_Product_Types.
   (* now we want to take advantage of the fibration notation scope... *)
   Notation "A × B" := (λ x, (A x) × (B x)) : fibration_scope.
 
+  (* thm_2_6_4 *)
   Theorem transport_prod {Z : UU} {A B : Z -> UU}
           {z w : Z} {p : z=w} {x : (A z)×(B z)}
     : transport (A×B)%fiber p x = (transport A p (fst x),
                                    transport B p (snd x)).
   Proof. destruct p; apply paireq; split; reflexivity. Qed.
-  Definition thm_2_6_4 {Z} {A B} {z w} {p} {x}
-    := @transport_prod Z A B z w p x.
 
 
+  (* thm_2_6_5 *)
   Theorem ap_paireq {A B A' B' : UU} {x y : A×B}
           {p : fst x = fst y} {q : snd x = snd y}
           {g : A -> A'} {h : B -> B'}
@@ -883,8 +983,6 @@ Section Cartesian_Product_Types.
                   ∙ (idpath (fst (g (fst y), h (snd y)))),
                 (ap h q) ).
   Proof. destruct x,y; simpl in p,q; destruct p,q; reflexivity. Defined.
-  Definition thm_2_6_5 {A B A' B'} {x y} {p} {q} {g} {h}
-    := @ap_paireq A B A' B' x y p q g h.
 End Cartesian_Product_Types.
 
 Section Σ_Types.
@@ -895,7 +993,7 @@ Section Σ_Types.
   Definition proj2eq {A : UU} {P : A -> UU} {w w' : total P}
              (p : w = w')
     : transport P (proj1eq p) w.2 = w'.2
-    := (inv (lem_2_3_10 _ _ _)) ∙ @apd _ (P∘proj1) _ _ (@proj2 _ P) p.
+    := (inv (transport_apeq _ _ _)) ∙ @apd _ (P∘proj1) _ _ (@proj2 _ P) p.
   Definition projeq {A : UU} {P : A -> UU} {w w' : total P}
              (p : w = w')
     : Σ(p : w.1 = w'.1), p # w.2 = w'.2
@@ -906,6 +1004,7 @@ Section Σ_Types.
   Proof. destruct w as (w1,w2); destruct w' as (w'1,w'2);
            simpl in pq; destruct pq as (p,q); destruct p;
              simpl in q; destruct q; reflexivity. Defined.
+  (* thm_2_7_2 *)
   Theorem sigeq_distribute {A : UU} {P : A -> UU} {w w' : Σ x:A, P x}
     : (w = w') ≃ Σ(p : w.1 = w'.1), p # w.2 = w'.2.
   Proof.
@@ -918,7 +1017,6 @@ Section Σ_Types.
           simpl in r2; destruct r2; reflexivity.
     - destruct p; destruct w as (w1,w2); reflexivity.
   Defined.
-  Definition thm_2_7_2 {A} {P} {w w'} := @sigeq_distribute A P w w'.
 
   Definition sigeq_compute {A : UU} {P : A -> UU} {w w' : Σ x:A, P x}
              (pq : Σ (p : w.1 = w'.1), p # w.2 = w'.2)
@@ -939,10 +1037,10 @@ Section Σ_Types.
     : spaireq (projeq p) = p
     := (snd sigeq_distribute.2).2 p.
 
+  (* cor_2_7_3 *)
   Corollary sig_uniq {A : UU} {P : A -> UU} {z : Σ x:A, P x}
     : z = { z.1 ; z.2 }.
   Proof. apply spaireq; exists idpath; exact idpath. Defined.
-  Definition cor_2_7_3 {A} {P} {z} := @sig_uniq A P z.
 
   Corollary lift {A : UU} {P : A -> UU} {x y : A}
             (u : P x) (p : x = y)
@@ -964,14 +1062,15 @@ Section Σ_Types.
 End Σ_Types.
 
 Section The_Unit_Type.
-  Theorem thm_2_8_1 {x y : 𝟙} {p : x=y}
+  Lemma uniteq (x y : 𝟙) : x = y.
+  Proof. induction x,y; reflexivity. Defined.
+  (* thm_2_8_1 *)
+  Theorem uniteq_is_unit {x y : 𝟙} {p : x=y}
   : (x=y) ≃ 𝟙.
   Proof.
     exists (λ _, tt).
     apply equiv_from_qinv.
-    exists (λ _, unit_rect (λ a,a=y)
-                           (unit_rect (λ b,tt=b) idpath y)
-                           x).
+    exists (λ _, uniteq x y).
     split; [ intro u; destruct u | intro q; destruct q ].
     - reflexivity.
     - destruct x; reflexivity.
@@ -993,11 +1092,11 @@ Section Pi_Types_and_the_Function_Extensionality_Axiom.
   Axiom funext_qinv : forall (A : UU) (B : A -> UU) (f g : ∏ x:A, B x),
       qinv (@happly A B f g).
 
+  (* axiom_2_9_3 *)
   Theorem funext_equiv {A : UU} {B : A -> UU} {f g : ∏ x:A, B x}
     : (f = g) ≃ ∏ x:A, f x = g x.
   Proof. exact { happly ;
                  (equiv_from_qinv (funext_qinv A B f g)) }. Defined.
-  Definition axiom_2_9_3 {A} {B} {f g} := @funext_equiv A B f g.
 
   Definition funext {A : UU} {B : A -> UU} {f g : ∏ x:A, B x}
     : (∏ x:A, f x = g x) -> f = g
@@ -1026,14 +1125,13 @@ Section Pi_Types_and_the_Function_Extensionality_Axiom.
     : (α ∙ β) = funext (λ x, (happly α x) ∙ (happly β x)).
   Proof. induction α; apply funext_uniq. Defined.
 
+  (* eqn_2_9_4 *)
   Lemma transport_f {X : UU} {x1 x2 : X} (A B : X -> UU)
         (p : x1=x2) (f : A x1 -> B x1)
     : transport (A -> B)%fiber p f
       =
       λ x, transport B p (f (transport A (inv p) x)).
   Proof. destruct p; reflexivity. Defined.
-  Definition eqn_2_9_4 {X : UU} {x1 x2 : X}
-    := @transport_f X x1 x2.
 
   (* I don't really know how to think about the type of B
      here, but it's really important for the dependent function
@@ -1045,6 +1143,7 @@ Section Pi_Types_and_the_Function_Extensionality_Axiom.
     : fibration (total A)
     := λ w, B w.1 w.2 .
 
+  (* eqn_2_9_5 *)
   Lemma transport_d {X : UU} {x1 x2 : X}
         (A : X -> UU) (B : ∏ x:X, A x -> UU)
         (p : x1=x2) (f : pi_fiber A B x1) (a : A x2)
@@ -1052,9 +1151,8 @@ Section Pi_Types_and_the_Function_Extensionality_Axiom.
       =
       transport (hat_fiber B) (inv (lift a (inv p))) (f ((inv p)#a)).
   Proof. induction p; reflexivity. Defined.
-  Definition eqn_2_9_5  {X : UU} {x1 x2 : X}
-    := @transport_d X x1 x2.
   
+  (* In pre2.v these lemmas are given proper names *)
   Lemma lem_2_9_6 {X : UU} {x y : X} {A B : X -> UU} {p : x=y}
         {f : A x -> B x} {g : A y -> B y}
     : (transport (A -> B)%fiber p f = g)
@@ -1072,7 +1170,7 @@ Section Pi_Types_and_the_Function_Extensionality_Axiom.
       =
       (happly (transport_f A B p f) (p#a))
       ∙ (ap (transport B p) (ap f
-            ((@lem_2_3_9 _ A _ _ _ _ _ _)
+            ((@transport_twice _ A _ _ _ _ _ _)
                ∙ (happly (ap (transport A) (path_inverse_r p)) a)
                ∙ idpath
             )
@@ -1130,7 +1228,7 @@ Section Universes_and_the_Univalence_Axiom.
     : p = ua (idtoeqv p)
     := inv ( (snd (qinv_from_equiv (idtoeqv_isequiv A B)).2) p ).
 
-  Definition ua_compute_1 {A B : UU} {e : A ≃ B}
+  Definition ua_compute_transport {A B : UU} {e : A ≃ B}
     : transport idfun (ua e) = e.1
     := ap proj1 (ua_compute e).
 
@@ -1162,9 +1260,11 @@ Section Universes_and_the_Univalence_Axiom.
           reflexivity.
   Qed.
 
-  Lemma lem_2_10_5 {A : UU} {B : A -> UU} {x y : A} {p : x=y} (u : B x)
+  (* lem_2_10_5 *)
+  Lemma transport_as_idtoeqv  {A : UU} {B : A -> UU} {x y : A}
+        {p : x=y} (u : B x)
     : transport B p u = (idtoeqv (ap B p)).1 u.
-  Proof. apply @lem_2_3_10 with (P := idfun) (f := B). Defined.
+  Proof. apply @transport_apeq with (P := idfun) (f := B). Defined.
 End Universes_and_the_Univalence_Axiom.
 
 
@@ -1183,6 +1283,8 @@ Section Identity_Type.
   (* the following proof was needlessly brutal to write.
      There should be a more succinct way of expressing equational
      rewriting in practice that still allows a high degree of control *)
+  (* note that this proof was written before I developed the 'chain'
+     tactic earlier.  Can you clean it up some with that? *)
   Theorem ap_isequiv {A B : UU} (f : A -> B)
           {a a' : A} (fe : isequiv f)
     : (a = a') ≃ (f a = f a').
@@ -1279,6 +1381,7 @@ Section Identity_Type.
     : transport (λ x, x = x) p q = (inv p) ∙ q ∙ p.
   Proof. destruct p; autorewrite with PathGroupoid; reflexivity. Defined.
 
+  (* these results are given proper names in pre2.v *)
   Theorem  thm_2_11_3 {A B : UU} {a a' : A} {f g : A -> B}
           (p : a=a') (q : f a = g a)
     : transport (λ x, f x = g x) p q = inv (ap f p) ∙ q ∙ ap g p.
@@ -1335,7 +1438,7 @@ Section Coproducts.
     : encode_coprod_l a0 x (decode_coprod_l a0 x c) = c.
   Proof. destruct x; try contradiction; simpl in c; simpl;
            unfold encode_coprod_l;
-           rewrite <- (lem_2_3_10 inl); unfold funcomp; simpl;
+           rewrite <- (transport_apeq inl); unfold funcomp; simpl;
              rewrite transport_eq_r; reflexivity. Defined.
 
   Lemma deencode_coprod_r {A B : UU} (b0 : B) (x : A + B) (p : inr b0 = x)
@@ -1346,7 +1449,7 @@ Section Coproducts.
     : encode_coprod_r b0 x (decode_coprod_r b0 x c) = c.
   Proof. destruct x; try contradiction; simpl in c; simpl;
            unfold encode_coprod_r;
-           rewrite <- (lem_2_3_10 inr); unfold funcomp; simpl;
+           rewrite <- (transport_apeq inr); unfold funcomp; simpl;
              rewrite transport_eq_r; reflexivity. Defined.
 
   Theorem coprod_l_eqvcoding {A B : UU} (a0 : A) (x : A + B)
@@ -1420,7 +1523,7 @@ Section Natural_Numbers.
            generalize n as n'; clear n; induction m;
              intro n; induction n; intro c; simpl;
                try (destruct c; trivial; try contradiction).
-         unfold encode_nat; rewrite <- (lem_2_3_10 S);
+         unfold encode_nat; rewrite <- (transport_apeq S);
            unfold funcomp; simpl.
          fold (encode_nat m n (decode_nat m n c)).
          apply IHm.
@@ -1486,7 +1589,7 @@ Section Example_Equality_Of_Structures.
   Proof. unfold induced_mult, Binop.
          repeat rewrite transport_f.
          repeat rewrite ua_symm.
-         repeat rewrite ua_compute_1.
+         repeat rewrite ua_compute_transport.
          trivial.
   Defined.
   (* trying to compute an induced associativity proof is harrowing *)

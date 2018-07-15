@@ -85,7 +85,6 @@ Section Chapter_2_Exercises.
 
 
   (* Exercise 2.7 *)
-  Print thm_2_6_5.
   Print ap_paireq.
   (* generalize the theorem just printed to Σ-types *)
   (* hint: try drawing topological pictures to get an intuition

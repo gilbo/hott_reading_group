@@ -176,17 +176,14 @@ Hint Rewrite @path_inverse_r_assoc : PathGroupoid.
 (* some tactics for helping with paths besides rewrite ... *)
 
 Tactic Notation "chain" constr(Ex) :=
-  let id := fresh "chainpath" in
   match goal with
-  | |- ?Ey = _ => assert (Ey = Ex) as id;
-                  [ | apply (path_compose id); clear id ]
+  | |- ?Ey = _ => refine (path_compose (_ : Ey = Ex) _)
   end.
 
 Tactic Notation "chain" constr(Ex) "by" tactic(T) :=
-  let id := fresh "chainpath" in
   match goal with
-  | |- ?Ey = _ => assert (Ey = Ex) as id;
-                  [ solve [T] | apply (path_compose id); clear id ]
+  | |- ?Ey = _ => refine (path_compose (_ : Ey = Ex) _);
+                  [ solve[T] | ]
   end.
 
 (* example:
