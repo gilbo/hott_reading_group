@@ -126,8 +126,8 @@ Inductive empty : UU := .
 
 (* bool type *)
 Inductive bool  : UU :=
-| false : bool
 | true : bool
+| false : bool
 .
 Definition negb (b:bool) := if b then false else true.
 

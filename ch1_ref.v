@@ -467,8 +467,8 @@ Section the_type_of_Booleans.
   (* Again, some stuff we don't need to understand to
       define the basic 'bool' type *)
   Inductive bool  : UU :=
-            | false : bool
             | true : bool
+            | false : bool
             .
   (* and we'll define an inversion *)
   Definition negb (b:bool) := if b then false else true.
@@ -483,8 +483,8 @@ Section the_type_of_Booleans.
 
   (* We can prove an exclusion principle for bool *)
   Definition bool_true_or_false
-  : forall (x:bool), (x=false) + (x=true)
-  := bool_rect (fun x => ((x=false) + (x=true))%type)
+  : forall (x:bool), (x=true) + (x=false)
+  := bool_rect (fun x => ((x=true) + (x=false))%type)
                (inl idpath)
                (inr idpath).
   Print bool_true_or_false.

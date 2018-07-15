@@ -78,8 +78,8 @@ Section Chapter_1_Exercises.
   (* 1.5 Bool Sum *)
   Definition BSum (A B : UU) :=
     exists x:bool, bool_rect (fun y : bool => UU) A B x.
-  Definition Binl {A B} (a:A) : BSum A B := {false ; a}.
-  Definition Binr {A B} (b:B) : BSum A B := {true ; b}.
+  Definition Binl {A B} (a:A) : BSum A B := {true ; a}.
+  Definition Binr {A B} (b:B) : BSum A B := {false ; b}.
   Definition BSum_induction {A B}
              (C : BSum A B -> UU)
              (f : forall a:A, C (Binl a))
@@ -105,8 +105,8 @@ Section Chapter_1_Exercises.
     forall (A : Type) (B : A -> Type)
            (f g : forall x:A, B x),
     (forall x : A, (f x) = (g x)) -> f = g.
-  Definition Bfst {A B} (x : BProd A B) : A := x false.
-  Definition Bsnd {A B} (x : BProd A B) : B := x true.
+  Definition Bfst {A B} (x : BProd A B) : A := x true.
+  Definition Bsnd {A B} (x : BProd A B) : B := x false.
   Definition uniq_BProd {A B} {x : BProd A B}
     : Bpair (Bfst x) (Bsnd x) = x
     := (* fill in here... *) .

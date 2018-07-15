@@ -108,8 +108,8 @@ Section Chapter_1_Exercises.
   (* 1.5 Bool Sum *)
   Definition BSum (A B : UU) :=
     exists x:bool, bool_rect (fun y : bool => UU) A B x.
-  Definition Binl {A B} (a:A) : BSum A B := {false ; a}.
-  Definition Binr {A B} (b:B) : BSum A B := {true ; b}.
+  Definition Binl {A B} (a:A) : BSum A B := {true ; a}.
+  Definition Binr {A B} (b:B) : BSum A B := {false ; b}.
   Definition BSum_induction {A B}
              (C : BSum A B -> UU)
              (f : forall a:A, C (Binl a))
@@ -119,8 +119,8 @@ Section Chapter_1_Exercises.
     := (* fill in here... *) (* use sig_rect *)
       sig_rect _ _ C
                (fun tag => match tag with
-                           | false => f
-                           | true => g end) x.
+                           | true => f
+                           | false => g end) x.
   Lemma DefEq_BSum_induction {A B} {C f g} :
     (forall a:A, BSum_induction C f g (Binl a) = f a) *
     (forall b:B, BSum_induction C f g (Binr b) = g b).
@@ -132,15 +132,15 @@ Section Chapter_1_Exercises.
     forall x:bool, bool_rect (fun x:bool => UU) A B x.
   Definition Bpair {A B} (a : A) (b : B) : BProd A B :=
     fun x:bool => match x with
-      | false => a
-      | true  => b
+      | true => a
+      | false  => b
     end.
   Axiom funext :
     forall (A : Type) (B : A -> Type)
            (f g : forall x:A, B x),
     (forall x : A, (f x) = (g x)) -> f = g.
-  Definition Bfst {A B} (x : BProd A B) : A := x false.
-  Definition Bsnd {A B} (x : BProd A B) : B := x true.
+  Definition Bfst {A B} (x : BProd A B) : A := x true.
+  Definition Bsnd {A B} (x : BProd A B) : B := x false.
   Definition uniq_BProd {A B} {x : BProd A B}
     : Bpair (Bfst x) (Bsnd x) = x
     := (* fill in here... *)
