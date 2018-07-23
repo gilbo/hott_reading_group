@@ -27,14 +27,6 @@ Notation "'Σ' x .. y , p" :=
   (sig (fun x => .. (sig (fun y => p)) ..))
     (at level 200, x binder, y binder, right associativity) : type_scope.
 (* input: \sigma or \GS for "greek-S" *)
-Notation "'∀' x .. y , P" :=
-  (forall x, .. (forall y, P) ..)
-    (at level 200, x binder, y binder, right associativity) : type_scope.
-(* input: \forall or \all *)
-Notation "'∃' x .. y , p" :=
-  (sig (fun x => .. (sig (fun y => p)) ..))
-    (at level 200, x binder, y binder, right associativity) : type_scope.
-(* input: \exists or \ex *)
 
 Notation "A × B" :=
   (prod A B)
@@ -80,7 +72,7 @@ Tactic Notation "unsimpl" constr(E) :=
 (* use this generalized form from UniMath... *)
 Definition idfun {T : UU} := λ t:T, t.
 Definition funcomp {X Y : UU} {Z:Y->UU}
-           (f : X -> Y) (g : forall y:Y, Z y)
+           (f : X -> Y) (g : ∏ y:Y, Z y)
   := λ x, g (f x).
 Notation "g ∘ f" := (funcomp f g)
                       (at level 40, left associativity) : function_scope.
@@ -562,7 +554,7 @@ Hint Rewrite @apd'_factor : ApdPushdown.
 
 Definition homotopy {A : UU} {P : A -> UU}
            (f g : section P)
-  := forall x:A, f x = g x.
+  := ∏ x:A, f x = g x.
 Notation "f ~ g" := (homotopy f g) (at level 70, no associativity).
 
 Lemma homotopy_refl {A : UU} {P : A -> UU} {f : section P}
@@ -614,6 +606,12 @@ Notation "A ≃ B" :=
   (equiv A B)
     (at level 80, no associativity) : type_scope.
 (* input: \~- or \simeq *)
+
+(* We can use some Coq magic to encode one of the
+   "abuses of notation" from the book, namely treating an
+   equivalence as if it were simply the function in its first half. *)
+Definition equiv_function {A B : UU} (e : A≃B) : A -> B := e.1 .
+Coercion equiv_function : equiv >-> Funclass.
 
 Lemma equiv_from_qinv {A B : UU} {f : A -> B}
   : qinv f -> isequiv f.
@@ -1498,7 +1496,7 @@ Proof. intro SEq; apply encode_nat in SEq as Eq;
 
 Definition Binop (A : UU) := (A->A->A)%type.
 Definition Assoc {A : UU} (m : Binop A) :=
-  ∀ x y z : A, m x (m y z) = m (m x y) z.
+  ∏ x y z : A, m x (m y z) = m (m x y) z.
 Definition SemigroupStr (A : UU) :=
   Σ m:Binop A, Assoc m.
 Definition Semigroup := Σ A:UU, SemigroupStr A.

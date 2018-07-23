@@ -33,14 +33,6 @@ Notation "'Σ' x .. y , p" :=
   (sig (fun x => .. (sig (fun y => p)) ..))
     (at level 200, x binder, y binder, right associativity) : type_scope.
 (* input: \sigma or \GS for "greek-S" *)
-Notation "'∀' x .. y , P" :=
-  (forall x, .. (forall y, P) ..)
-    (at level 200, x binder, y binder, right associativity) : type_scope.
-(* input: \forall or \all *)
-Notation "'∃' x .. y , p" :=
-  (sig (fun x => .. (sig (fun y => p)) ..))
-    (at level 200, x binder, y binder, right associativity) : type_scope.
-(* input: \exists or \ex *)
 
 Notation "A × B" :=
   (prod A B)
@@ -73,7 +65,7 @@ Notation "'ℕ'" := nat : type_scope.
 (* use this generalized form from UniMath... *)
 Definition idfun {T : UU} := λ t:T, t.
 Definition funcomp {X Y : UU} {Z:Y->UU}
-           (f : X -> Y) (g : forall y:Y, Z y)
+           (f : X -> Y) (g : ∏ y:Y, Z y)
   := λ x, g (f x).
 
 Notation "g ∘ f" := (funcomp f g)
@@ -515,7 +507,7 @@ Notation "p # x" :=
 Section Homotopies_and_Equivalences.
   Definition homotopy {A : UU} {P : A -> UU}
              (f g : section P)
-    := forall x:A, f x = g x.
+    := ∏ x:A, f x = g x.
   Notation "f ~ g" := (homotopy f g) (at level 70, no associativity).
 
   (* Uncomment this section if you want to try out the homotopy proofs
@@ -820,7 +812,7 @@ Section Homotopies_and_Equivalences.
      to a later chapter *)
   (*
   Lemma equiv_property_3 (A B : UU) (f : A -> B)
-    : forall e1 e2 : isequiv f, e1 = e2.
+    : ∏ e1 e2 : isequiv f, e1 = e2.
    *)
 
   Definition equiv (A B : UU) := (Σ f:A->B, isequiv f).
@@ -874,7 +866,7 @@ Section Homotopies_and_Equivalences.
 End Homotopies_and_Equivalences.
 
 Notation "f ~ g" := (homotopy f g) (at level 70, no associativity).
-Notation "A ≃ B" := (Σ f:A->B, isequiv f)
+Notation "A ≃ B" := (@equiv A B)
                       (at level 80, no associativity) : type_scope.
 
 Create HintDb PathGroupoid.
@@ -886,6 +878,20 @@ Hint Rewrite @path_compose_assoc : PathGroupoid.
 Hint Rewrite @path_inverse_l_assoc : PathGroupoid.
 Hint Rewrite @path_inverse_r_assoc : PathGroupoid.
 
+(* We can use some Coq magic to encode one of the
+   "abuses of notation" from the book, namely treating an
+   equivalence as if it were simply the function in its first half. *)
+Definition equiv_function {A B : UU} (e : A≃B) : A -> B := e.1 .
+Coercion equiv_function : equiv >-> Funclass.
+(* note how we can now apply an equivalence! *)
+Compute equiv_refl 3.
+(* the following commands can be used to iterrogate the
+   current state of Coercions in the Coq system *)
+(*
+  Print Classes.
+  Print Coercions.
+  Print Graph.
+ *)
 
 Section The_Higher_Groupoid_Structure_of_Type_Formers.
 End The_Higher_Groupoid_Structure_of_Type_Formers.
@@ -1175,7 +1181,7 @@ Section Pi_Types_and_the_Function_Extensionality_Axiom.
                ∙ idpath
             )
         ))
-      ∙ ((lem_2_9_6.1 q) a).
+      ∙ ((lem_2_9_6 q) a).
   Proof. induction p; reflexivity. Qed.
 
   (* No, I will not repeat this insanity for dependent functions *)
@@ -1229,7 +1235,7 @@ Section Universes_and_the_Univalence_Axiom.
     := inv ( (snd (qinv_from_equiv (idtoeqv_isequiv A B)).2) p ).
 
   Definition ua_compute_transport {A B : UU} {e : A ≃ B}
-    : transport idfun (ua e) = e.1
+    : transport idfun (ua e) = e
     := ap proj1 (ua_compute e).
 
   (* easier to do the following lemmas, for which I ignore the
@@ -1263,7 +1269,7 @@ Section Universes_and_the_Univalence_Axiom.
   (* lem_2_10_5 *)
   Lemma transport_as_idtoeqv  {A : UU} {B : A -> UU} {x y : A}
         {p : x=y} (u : B x)
-    : transport B p u = (idtoeqv (ap B p)).1 u.
+    : transport B p u = (idtoeqv (ap B p)) u.
   Proof. apply @transport_apeq with (P := idfun) (f := B). Defined.
 End Universes_and_the_Univalence_Axiom.
 
@@ -1469,7 +1475,7 @@ Section Coproducts.
     split; intro; [ apply endecode_coprod_r | apply deencode_coprod_r ].
   Defined.
 
-  Remark bool_is_unit_plus_unit : 𝟚 ≃ 𝟙 + 𝟙.
+  Remark bool_is_unit_plus_unit : 𝟚 ≃ (𝟙 + 𝟙)%type.
   Proof.
     exists (λ b, match b with | false => inl tt | true => inr tt end).
     apply equiv_from_qinv.
@@ -1480,7 +1486,7 @@ Section Coproducts.
 
   Remark true_is_not_false : true ≠ false.
   Proof.
-    intro e; apply (ap bool_is_unit_plus_unit.1) in e; simpl in e.
+    intro e; apply (ap bool_is_unit_plus_unit) in e; simpl in e.
     apply (encode_coprod_r tt (inl tt) e).
   Defined.
 End Coproducts.
@@ -1547,7 +1553,7 @@ End Natural_Numbers.
 Section Example_Equality_Of_Structures.
   Definition Binop (A : UU) := (A->A->A)%type.
   Definition Assoc {A : UU} (m : Binop A) :=
-    ∀ x y z : A, m x (m y z) = m (m x y) z.
+    ∏ x y z : A, m x (m y z) = m (m x y) z.
   Definition SemigroupStr (A : UU) :=
     Σ m:Binop A, Assoc m.
   Definition Semigroup := Σ A:UU, SemigroupStr A.
@@ -1585,7 +1591,7 @@ Section Example_Equality_Of_Structures.
   Lemma explicit_induced_mult {A B : UU} (e : A≃B) (m : A->A->A)
         (b1 b2 : B)
     : (induced_mult (ua e) m) b1 b2
-      = e.1 (m ((equiv_symm e).1 b1) ((equiv_symm e).1 b2)).
+      = e (m ((equiv_symm e) b1) ((equiv_symm e) b2)).
   Proof. unfold induced_mult, Binop.
          repeat rewrite transport_f.
          repeat rewrite ua_symm.
